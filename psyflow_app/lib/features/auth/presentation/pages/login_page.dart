@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -63,6 +64,20 @@ class _LoginPageState extends State<LoginPage> {
               onPressed: loading ? null : login,
               child: Text(loading ? "Entrando..." : "Login"),
             )
+
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const RegisterPage(),
+                  ),
+                );
+              },
+              child: const Text(
+                'Criar Conta',
+              ),
+            ),
           ],
         ),
       ),
