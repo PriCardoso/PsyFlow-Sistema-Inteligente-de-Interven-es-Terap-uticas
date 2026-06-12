@@ -1,53 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/theme/app_theme.dart';
+import 'pages/login_page.dart';
+import 'pages/complete_profile_page.dart';
+import '../../dashboard/pages/psychologist_dashboard_page.dart';
+import '../../dashboard/pages/patient_dashboard_page.dart';
 
-class AuthGate extends StatefulWidget {
+class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
   @override
-  State<AuthGate> createState() => _AuthGateState();
-}
-
-class _AuthGateState extends State<AuthGate> {
-  final supabase = Supabase.instance.client;
-
-  @override
   Widget build(BuildContext context) {
+    final supabase = Supabase.instance.client;
+
     return StreamBuilder<AuthState>(
       stream: supabase.auth.onAuthStateChange,
       builder: (context, snapshot) {
         final session = supabase.auth.currentSession;
 
+        // Não logado
         if (session == null) {
           return const LoginPage();
         }
 
-        return FutureBuilder(
+        // Logado — buscar perfil para decidir a rota
+        return FutureBuilder<Map<String, dynamic>?>(
           future: supabase
               .from('users')
               .select()
               .eq('id', session.user.id)
-              .single(),
-          builder: (context, AsyncSnapshot snapshot) {
-            if (!snapshot.hasData) {
+              .maybeSingle(),
+          builder: (context, profileSnapshot) {
+            if (profileSnapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
+                backgroundColor: AppColors.background,
+                body: Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                ),
               );
             }
 
-            final role = snapshot.data['role'];
+            final profile = profileSnapshot.data;
+
+            // Perfil não existe ou incompleto — ir para completar perfil
+            if (profile == null || profile['profile_complete'] != true) {
+              final role = profile?['role'] as String? ?? 'patient';
+              return CompleteProfilePage(role: role);
+            }
+
+            // Redirecionar pelo role
+            final role = profile['role'] as String?;
 
             if (role == 'psychologist') {
-              return const PsychologistDashboard();
+              return const PsychologistDashboardPage();
             }
 
             if (role == 'patient') {
-              return const PatientDashboard();
+              return const PatientDashboardPage();
             }
 
-            return const Scaffold(
-              body: Center(child: Text("Role inválido")),
-            );
+            // Role inválido — voltar para login
+            return const LoginPage();
           },
         );
       },
